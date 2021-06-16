@@ -1,0 +1,19 @@
+{
+  "name": "stirling",
+  "version": "0.0.1",
+  "description": "Event-Sourced Web-Application Engine",
+  "main": "src/main.js",
+  "dependencies": {
+    "express": "^4.17.1",
+    "nedb": "^1.8.0"
+  },
+  "devDependencies": {
+    "ava": "^3.15.0"
+  },
+  "scripts": {
+    "test": "ava **.spec.js",
+    "watch": "ava **.spec.js -w"
+  },
+  "author": "",
+  "license": "ISC"
+}
