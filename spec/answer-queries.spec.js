@@ -8,7 +8,8 @@ test('Reject unknown query', t => {
 
     // ACTION
     return c.service.answer(new Query('Foo')
-        .withParameters('bar'))
+        .withParameters('bar')
+        .withTrace('here'))
 
         // EXPECTATION
         .then(() => t.fail('Should have rejected'))
@@ -20,6 +21,25 @@ test('Reject unknown query', t => {
                     parameters: 'bar'
                 }
             })
+        })
+        .then(() => {
+            t.deepEqual(c.log.infos, [{
+                trace: 'here',
+                message: 'Answering',
+                attributes: {
+                    name: 'Foo',
+                    parameters: 'bar'
+                }
+            }, {
+                trace: 'here',
+                message: 'Violation: UNKNOWN_QUERY',
+                attributes: {
+                    query: {
+                        name: 'Foo',
+                        parameters: 'bar'
+                    }
+                }
+            }])
         })
 })
 
@@ -44,14 +64,7 @@ test('Respond with answer', t => {
         // EXPECTATION
         .then(response => {
             t.deepEqual(response, ['Foo', 'bar'])
-            t.deepEqual(c.log.infos, [{
-                trace: 'here',
-                message: 'Answering',
-                attributes: {
-                    name: 'Foo',
-                    parameters: 'bar'
-                }
-            }, {
+            t.deepEqual(c.log.infos.slice(1), [{
                 trace: 'here',
                 message: 'Answered',
                 attributes: undefined
@@ -88,7 +101,38 @@ test('Find first that can answer', t => {
         })
 })
 
-test('Reject throwing answer', t => {
+test('Reject violating answer', t => {
+    // CONDITION
+    const c = mock.context()
+    c.service
+        .register(class {
+            static canAnswer() {
+                return true
+            }
+            answer() {
+                throw new Violation.Generic('BOOM', 'Something went boom', { went: 'boom' })
+            }
+        })
+
+    // ACTION
+    return c.service.answer(new Query('Foo')
+        .withTrace('here'))
+
+        // EXPECTATION
+        .then(() => t.fail('Should have rejected'))
+        .catch(e => t.is(e.message, 'BOOM'))
+        .then(() => {
+            t.deepEqual(c.journal.recorded, [])
+            t.deepEqual(c.log.infos.slice(1), [{
+                trace: 'here',
+                message: 'Violation: BOOM',
+                attributes: { went: 'boom' }
+            }])
+            t.deepEqual(c.log.errors, [])
+        })
+})
+
+test('Reject failing answer', t => {
     // CONDITION
     const c = mock.context()
     c.service
@@ -110,7 +154,6 @@ test('Reject throwing answer', t => {
         .catch(e => t.is(e, 'Boom!'))
         .then(() => t.deepEqual(c.log.errors, [{
             trace: 'here',
-            message: 'Query failed',
             error: 'Boom!'
         }]))
 })

@@ -55,7 +55,6 @@ test('Log thrown errors', t => {
         .then(() => {
             t.deepEqual(c.log.errors, [{
                 trace: 'here_R0',
-                message: 'Reaction failed',
                 error: 'Boom!'
             }])
         })

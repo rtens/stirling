@@ -8,7 +8,8 @@ test('Reject unknown command', t => {
 
     // ACTION
     return c.service.execute(new Command('Foo')
-        .withArguments('bar'))
+        .withArguments('bar')
+        .withTrace('here'))
 
         // EXPECTATION
         .then(() => t.fail('Should have rejected'))
@@ -27,8 +28,13 @@ test('Reject unknown command', t => {
                 }
             }, {
                 trace: 'here',
-                message: 'Executed',
-                attributes: undefined
+                message: 'Violation: UNKNOWN_COMMAND',
+                attributes: {
+                    command: {
+                        name: 'Foo',
+                        arguments: 'bar'
+                    }
+                }
             }])
         })
 })
@@ -72,14 +78,7 @@ test('Record events', t => {
                 }]
             }])
 
-            t.deepEqual(c.log.infos, [{
-                trace: 'here',
-                message: 'Executing',
-                attributes: {
-                    name: 'Foo',
-                    arguments: 'bar'
-                }
-            }, {
+            t.deepEqual(c.log.infos.slice(1), [{
                 trace: 'here',
                 message: 'Executed',
                 attributes: undefined
@@ -187,7 +186,40 @@ test('Reconstitute aggregate', t => {
         })
 })
 
-test('Reject throwing execution', t => {
+test('Reject violating execution', t => {
+    // CONDITION
+    const c = mock.context()
+    c.service
+        .register(class {
+            static identify() {
+                return 'bar'
+            }
+            static canExecute() {
+                return true
+            }
+            execute() {
+                throw new Violation.Generic('BOOM', 'Something went boom', { went: 'boom' })
+            }
+        })
+
+    // ACTION
+    return c.service.execute(new Command('Foo').withTrace('here'))
+
+        // EXPECTATION
+        .then(() => t.fail('Should have rejected'))
+        .catch(e => t.is(e.message, 'BOOM'))
+        .then(() => {
+            t.deepEqual(c.journal.recorded, [])
+            t.deepEqual(c.log.infos.slice(1), [{
+                trace: 'here',
+                message: 'Violation: BOOM',
+                attributes: { went: 'boom' }
+            }])
+            t.deepEqual(c.log.errors, [])
+        })
+})
+
+test('Reject failing execution', t => {
     // CONDITION
     const c = mock.context()
     c.service
@@ -212,7 +244,6 @@ test('Reject throwing execution', t => {
         .then(() => t.deepEqual(c.journal.recorded, []))
         .then(() => t.deepEqual(c.log.errors, [{
             trace: 'here',
-            message: 'Command failed',
             error: 'Boom!'
         }]))
 })
@@ -232,7 +263,10 @@ test('Reject execution not returning anything', t => {
 
         // EXPECTATION
         .then(() => t.fail('Should have rejected'))
-        .catch(e => t.is(e.message, 'Execution did not return any events'))
+        .catch(e => {
+            t.is(e.message, 'Execution did not return any events')
+            t.is(c.log.errors[0].error, e)
+        })
 })
 
 test('Reject execution returning zero events', t => {
@@ -250,7 +284,10 @@ test('Reject execution returning zero events', t => {
 
         // EXPECTATION
         .then(() => t.fail('Should have rejected'))
-        .catch(e => t.is(e.message, 'Execution did not return any events'))
+        .catch(e => {
+            t.is(e.message, 'Execution did not return any events')
+            t.is(c.log.errors[0].error, e)
+        })
 })
 
 test('Provide defaults by convention', t => {

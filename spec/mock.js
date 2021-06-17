@@ -40,8 +40,8 @@ class Log {
         this.infos = []
     }
 
-    error(trace, message, error) {
-        this.errors.push({ trace, message, error })
+    error(trace, error) {
+        this.errors.push({ trace, error })
     }
 
     info(trace, message, attributes) {
