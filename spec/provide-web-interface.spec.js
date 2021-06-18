@@ -26,7 +26,7 @@ test('Execute command with POST request', t => {
             end: true
         })
         t.deepEqual(executed, {
-            trace: 'TC_random',
+            trace: 'random',
             name: 'DoFoo',
             arguments: 'bar'
         })
@@ -58,65 +58,42 @@ test('Answer query with GET request', t => {
             end: true
         })
         t.deepEqual(answered, {
-            trace: 'TQ_random',
+            trace: 'random',
             name: 'IsFoo',
-            parameters: 'bar'
+            arguments: 'bar'
         })
     })
 })
 
-test('Respond with 404 if command is not found', t => {
+test('Respond with 404 if query of command is unknown', t => {
     // CONDITION
     const service = {
-        execute: () => Promise.reject(new Violation.UnknownCommand('DoThis'))
+        execute: () => Promise.reject(new Violation.UnknownAction('SomeCommand')),
+        answer: () => Promise.reject(new Violation.UnknownAction('SomeQuery'))
     }
     const server = new ExpressServer(service, random)
 
     // ACTION
-    const res = new Response()
-    return server.post({ params: {} }, res).then(() => {
+    return Promise.all([
+        ['post', 'SomeCommand'],
+        ['get', 'SomeQuery']
+    ].map(([method, details]) => {
+        const res = new Response()
+        server[method]({ params: {}, body: {} }, res).then(() => {
 
-        // EXPECTATION
-        t.deepEqual(res.set, {
-            status: 404,
-            send: {
-                trace: 'TC_random',
-                error: 'UNKNOWN_COMMAND',
-                message: 'This command is unknown. Did you misspell it?',
-                details: {
-                    command: 'DoThis'
-                }
-            },
-            end: true
+            // EXPECTATION
+            t.deepEqual(res.set, {
+                status: 404,
+                send: {
+                    trace: 'random',
+                    error: 'UNKNOWN_ACTION',
+                    message: 'This action is unknown. Did you misspell it?',
+                    details
+                },
+                end: true
+            })
         })
-    })
-})
-
-test('Respond with 404 if query is not found', t => {
-    // CONDITION
-    const service = {
-        answer: () => Promise.reject(new Violation.UnknownQuery('IsThat'))
-    }
-    const server = new ExpressServer(service, random)
-
-    // ACTION
-    const res = new Response()
-    return server.get({ params: {} }, res).then(() => {
-
-        // EXPECTATION
-        t.deepEqual(res.set, {
-            status: 404,
-            send: {
-                trace: 'TQ_random',
-                error: 'UNKNOWN_QUERY',
-                message: 'This query is unknown. Did you misspell it?',
-                details: {
-                    query: 'IsThat'
-                }
-            },
-            end: true
-        })
-    })
+    }))
 })
 
 test('Respond with 409 if command violates a business rule', t => {
@@ -134,7 +111,7 @@ test('Respond with 409 if command violates a business rule', t => {
         t.deepEqual(res.set, {
             status: 409,
             send: {
-                trace: 'TC_random',
+                trace: 'random',
                 error: 'BUSINESS_RULE_VIOLATED',
                 message: 'This command violate a business rule and was therefore rejected.',
                 details: {
@@ -161,7 +138,7 @@ test('Respond with 400 for generic violations', t => {
         t.deepEqual(res.set, {
             status: 400,
             send: {
-                trace: 'TC_random',
+                trace: 'random',
                 error: 'DANGER',
                 message: 'Something went wrong',
                 details: 'What else?'
@@ -186,7 +163,7 @@ test('Respond with 500 for thrown errors', t => {
         t.deepEqual(res.set, {
             status: 500,
             send: {
-                trace: 'TC_random',
+                trace: 'random',
                 error: 'UNEXPECTED_ERROR',
                 message: 'An unexpected error ocurred. Please try again later.'
             },
@@ -195,7 +172,7 @@ test('Respond with 500 for thrown errors', t => {
     })
 })
 
-const random = prefix => prefix + '_random'
+const random = () => 'random'
 
 class Response {
     constructor() {

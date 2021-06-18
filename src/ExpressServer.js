@@ -1,7 +1,6 @@
 const express = require('express')
 const Violation = require('./Violation')
-const Command = require('./Command')
-const Query = require('./Query')
+const Action = require('./Action')
 
 module.exports = class ExpressServer {
     constructor(service, random = defaultRandom) {
@@ -21,9 +20,9 @@ module.exports = class ExpressServer {
     }
 
     post(req, res) {
-        const trace = this.random('TC')
+        const trace = this.random()
 
-        return this.service.execute(new Command(req.params.command)
+        return this.service.execute(new Action(req.params.command)
             .withArguments(req.body)
             .withTrace(trace))
             .then(() => res.end())
@@ -31,10 +30,10 @@ module.exports = class ExpressServer {
     }
 
     get(req, res) {
-        const trace = this.random('TQ')
+        const trace = this.random()
 
-        return this.service.answer(new Query(req.params.query)
-            .withParameters(req.query)
+        return this.service.answer(new Action(req.params.query)
+            .withArguments(req.query)
             .withTrace(trace))
             .then(answer => res.send(answer).end())
             .catch(e => handleError(e, trace, res))
@@ -54,15 +53,13 @@ function handleError(error, trace, res) {
 }
 
 function errorStatus(violation) {
-    if (violation instanceof Violation.UnknownCommand) return 404
-    if (violation instanceof Violation.UnknownQuery) return 404
+    if (violation instanceof Violation.UnknownAction) return 404
     if (violation instanceof Violation.BusinessRule) return 409
     return 400
 }
 
-function defaultRandom(prefix, length = 7) {
-    return prefix + '_'
-        + Buffer.from('' + Math.random())
+function defaultRandom(length = 7) {
+    return Buffer.from('' + Math.random())
             .toString('base64')
             .substr(-length - 3, length)
 }

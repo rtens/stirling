@@ -1,6 +1,6 @@
 const test = require('ava');
 const mock = require('./mock')
-const { Command, Aggregate, Event, Violation } = require('..')
+const { Command, Aggregate, Fact, Violation } = require('..')
 
 test('Reject unknown command', t => {
     // CONDITION
@@ -14,8 +14,12 @@ test('Reject unknown command', t => {
         // EXPECTATION
         .then(() => t.fail('Should have rejected'))
         .catch(e => {
-            t.assert(e instanceof Violation.UnknownCommand)
-            t.deepEqual(e.details, { command: { name: 'Foo', arguments: 'bar' } })
+            t.assert(e instanceof Violation.UnknownAction)
+            t.deepEqual(e.details, {
+                action: 'command',
+                name: 'Foo',
+                arguments: 'bar'
+            })
         })
         .then(() => {
             t.deepEqual(c.journal.recorded, [])
@@ -28,18 +32,17 @@ test('Reject unknown command', t => {
                 }
             }, {
                 trace: 'here',
-                message: 'Violation: UNKNOWN_COMMAND',
+                message: 'Violation: UNKNOWN_ACTION',
                 attributes: {
-                    command: {
-                        name: 'Foo',
-                        arguments: 'bar'
-                    }
+                    action: 'command',
+                    name: 'Foo',
+                    arguments: 'bar'
                 }
             }])
         })
 })
 
-test('Record events', t => {
+test('Record facts', t => {
     // CONDITION
     const c = mock.context()
     c.service
@@ -52,8 +55,8 @@ test('Record events', t => {
             }
             execute(command) {
                 return [
-                    new Event(command.name + 'd', command.arguments),
-                    new Event('Bard', 'two')
+                    new Fact(command.name + 'd', command.arguments),
+                    new Fact('Bard', 'two')
                 ]
             }
         })
@@ -69,7 +72,7 @@ test('Record events', t => {
                 trace: 'here',
                 aggregateId: 'bar',
                 revision: 0,
-                events: [{
+                facts: [{
                     name: 'Food',
                     attributes: 'bar'
                 }, {
@@ -105,7 +108,7 @@ test('Find first who can execute the command', t => {
                 return true
             }
             execute() {
-                return [new Event('food')]
+                return [new Fact('food')]
             }
         })
         .register(class {
@@ -124,7 +127,7 @@ test('Find first who can execute the command', t => {
                 trace: 'here',
                 aggregateId: 'foo',
                 revision: 0,
-                events: [{
+                facts: [{
                     name: 'food',
                     attributes: null
                 }]
@@ -137,14 +140,14 @@ test('Reconstitute aggregate', t => {
     const c = mock.context()
     c.journal.records = [{
         aggregateId: 'foo',
-        events: ['one', 'two']
+        facts: ['one', 'two']
     }, {
         aggregateId: 'bar',
-        events: ['not']
+        facts: ['not']
     }, {
         aggregateId: 'foo',
         revision: 42,
-        events: ['three']
+        facts: ['three']
     }]
 
     c.service
@@ -156,10 +159,10 @@ test('Reconstitute aggregate', t => {
                 return true
             }
             execute() {
-                return [new Event('Done', this.applied)]
+                return [new Fact('Done', this.applied)]
             }
-            apply(event) {
-                this.applied = [...(this.applied || ['zero']), event]
+            apply(fact) {
+                this.applied = [...(this.applied || ['zero']), fact]
             }
         })
 
@@ -173,7 +176,7 @@ test('Reconstitute aggregate', t => {
                 trace: 'here',
                 aggregateId: 'foo',
                 revision: 43,
-                events: [{
+                facts: [{
                     name: 'Done',
                     attributes: [
                         'zero',
@@ -246,49 +249,33 @@ test('Reject failing execution', t => {
             trace: 'here',
             error: 'Boom!'
         }]))
-})
+});
 
-test('Reject execution not returning anything', t => {
-    // CONDITION
-    const c = mock.context()
-    c.service
-        .register(class {
-            static identify() { return 'foo' }
-            static canExecute() { return true }
-            execute() { }
-        })
+[
+    ['nothing', null],
+    ['an empty list', []],
+    ['no facts', [new Fact(), 'no fact']]
+].forEach(([description, returnValue]) =>
+    test('Reject execution returning ' + description, t => {
+        // CONDITION
+        const c = mock.context()
+        c.service
+            .register(class {
+                static identify() { return 'foo' }
+                static canExecute() { return true }
+                execute() { return returnValue }
+            })
 
-    // ACTION
-    return c.service.execute(new Command('Foo'))
+        // ACTION
+        return c.service.execute(new Command('Foo'))
 
-        // EXPECTATION
-        .then(() => t.fail('Should have rejected'))
-        .catch(e => {
-            t.is(e.message, 'Execution did not return any events')
-            t.is(c.log.errors[0].error, e)
-        })
-})
-
-test('Reject execution returning zero events', t => {
-    // CONDITION
-    const c = mock.context()
-    c.service
-        .register(class {
-            static identify() { return 'foo' }
-            static canExecute() { return true }
-            execute() { return [] }
-        })
-
-    // ACTION
-    return c.service.execute(new Command('Foo'))
-
-        // EXPECTATION
-        .then(() => t.fail('Should have rejected'))
-        .catch(e => {
-            t.is(e.message, 'Execution did not return any events')
-            t.is(c.log.errors[0].error, e)
-        })
-})
+            // EXPECTATION
+            .then(() => t.fail('Should have rejected'))
+            .catch(e => {
+                t.is(e.message, 'Execution did not return a list of facts')
+                t.is(c.log.errors[0].error, e)
+            })
+    }))
 
 test('Reject unidentified command', t => {
     // CONDITION
@@ -297,7 +284,7 @@ test('Reject unidentified command', t => {
         .register(class {
             static identify() { return null }
             static canExecute() { return true }
-            execute() { return [new Event('Food')] }
+            execute() { return [new Fact('Food')] }
         })
 
     // ACTION
@@ -317,7 +304,7 @@ test('Provide defaults by convention', t => {
     c.journal.records = [{
         aggregateId: 'foo',
         revision: 42,
-        events: [{
+        facts: [{
             name: 'Food',
             attributes: 'one'
         }, {
@@ -332,7 +319,7 @@ test('Provide defaults by convention', t => {
     c.service
         .register(class One extends Aggregate {
             executeFoo(args) {
-                return [new Event('Done', { args, ...this })]
+                return [new Fact('Done', { args, ...this })]
             }
             applyFood(attributes) {
                 this.applied = [attributes]
@@ -353,7 +340,7 @@ test('Provide defaults by convention', t => {
                 trace: 'here',
                 aggregateId: 'foo',
                 revision: 43,
-                events: [{
+                facts: [{
                     name: 'Done',
                     attributes: {
                         args: { oneId: 'foo' },

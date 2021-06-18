@@ -8,7 +8,7 @@ class Journal {
     }
 
     record(record) {
-        record.events = record.events.map(e => ({ ...e }))
+        record.facts = record.facts.map(e => ({ ...e }))
         this.recorded.push(record)
         return Promise.all(this.followers.map(f => f(record)))
     }

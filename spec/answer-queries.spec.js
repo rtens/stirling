@@ -8,18 +8,17 @@ test('Reject unknown query', t => {
 
     // ACTION
     return c.service.answer(new Query('Foo')
-        .withParameters('bar')
+        .withArguments('bar')
         .withTrace('here'))
 
         // EXPECTATION
         .then(() => t.fail('Should have rejected'))
         .catch(e => {
-            t.assert(e instanceof Violation.UnknownQuery)
+            t.assert(e instanceof Violation.UnknownAction)
             t.deepEqual(e.details, {
-                query: {
-                    name: 'Foo',
-                    parameters: 'bar'
-                }
+                action: 'query',
+                name: 'Foo',
+                arguments: 'bar'
             })
         })
         .then(() => {
@@ -28,16 +27,15 @@ test('Reject unknown query', t => {
                 message: 'Answering',
                 attributes: {
                     name: 'Foo',
-                    parameters: 'bar'
+                    arguments: 'bar'
                 }
             }, {
                 trace: 'here',
-                message: 'Violation: UNKNOWN_QUERY',
+                message: 'Violation: UNKNOWN_ACTION',
                 attributes: {
-                    query: {
-                        name: 'Foo',
-                        parameters: 'bar'
-                    }
+                    action: 'query',
+                    name: 'Foo',
+                    arguments: 'bar'
                 }
             }])
         })
@@ -52,13 +50,13 @@ test('Respond with answer', t => {
                 return query.name == 'Foo'
             }
             answer(query) {
-                return [query.name, query.parameters]
+                return [query.name, query.arguments]
             }
         })
 
     // ACTION
     return c.service.answer(new Query('Foo')
-        .withParameters('bar')
+        .withArguments('bar')
         .withTrace('here'))
 
         // EXPECTATION
@@ -162,8 +160,8 @@ test('Reconstitute projection', t => {
     // CONDITION
     const c = mock.context()
     c.journal.records = [
-        { events: ['one', 'two'] },
-        { events: ['three'] }
+        { facts: ['one', 'two'] },
+        { facts: ['three'] }
     ]
     c.service
         .register(class {
@@ -173,8 +171,8 @@ test('Reconstitute projection', t => {
             answer() {
                 return { ...this }
             }
-            apply(event) {
-                this.applied = [...(this.applied || ['zero']), event]
+            apply(fact) {
+                this.applied = [...(this.applied || ['zero']), fact]
             }
         })
 
@@ -193,7 +191,7 @@ test('Provide defaults by convention', t => {
     // CONDITION
     const c = mock.context()
     c.journal.records = [{
-        events: [
+        facts: [
             { name: 'Food', attributes: 'foo' },
             { name: 'Bard', attributes: 'bar' },
             { name: 'Bazd', attributes: 'baz' },

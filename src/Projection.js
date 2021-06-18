@@ -5,10 +5,10 @@ module.exports = class Projection {
     }
 
     answer(query) {
-        return this['answer' + query.name](query.parameters)
+        return this['answer' + query.name](query.arguments)
     }
 
-    apply(event) {
-        this[['apply' + event.name]] && this[['apply' + event.name]](event.attributes)
+    apply(fact) {
+        this[['apply' + fact.name]] && this[['apply' + fact.name]](fact.attributes)
     }
 }

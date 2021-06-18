@@ -26,17 +26,17 @@ Object.keys(journals).forEach(name => {
         journal.record({
             aggregateId: 'foo',
             revision: 42,
-            events: ['one', 'two']
+            facts: ['one', 'two']
         })
         journal.record({
             aggregateId: 'bar',
             revision: 43,
-            events: ['four']
+            facts: ['four']
         })
         journal.record({
             aggregateId: 'bar',
             revision: 42,
-            events: ['three']
+            facts: ['three']
         })
 
         // ACTION
@@ -47,15 +47,15 @@ Object.keys(journals).forEach(name => {
             .then(() => t.deepEqual(records, [{
                 aggregateId: 'bar',
                 revision: 42,
-                events: ['three'],
+                facts: ['three'],
             }, {
                 aggregateId: 'bar',
                 revision: 43,
-                events: ['four'],
+                facts: ['four'],
             }, {
                 aggregateId: 'foo',
                 revision: 42,
-                events: ['one', 'two'],
+                facts: ['one', 'two'],
             }]))
     })
 
@@ -88,7 +88,7 @@ Object.keys(journals).forEach(name => {
         journal.record({
             aggregateId: 'foo',
             revision: 42,
-            events: ['one']
+            facts: ['one']
         })
         journal.record({
             aggregateId: 'bar',
@@ -97,7 +97,7 @@ Object.keys(journals).forEach(name => {
         journal.record({
             aggregateId: 'foo',
             revision: 43,
-            events: ['two']
+            facts: ['two']
         })
 
         // ACTION
@@ -108,11 +108,11 @@ Object.keys(journals).forEach(name => {
             .then(() => t.deepEqual(records, [{
                 aggregateId: 'foo',
                 revision: 42,
-                events: ['one']
+                facts: ['one']
             }, {
                 aggregateId: 'foo',
                 revision: 43,
-                events: ['two']
+                facts: ['two']
             }]))
     })
 

@@ -1,8 +1,8 @@
 const test = require('ava');
-const { Aggregate, Event, Command } = require('..')
+const { Aggregate, Fact, Command } = require('..')
 const mock = require('./mock')
 
-test('Purge aggregate using PURGED event', t => {
+test('Purge aggregate using PURGED fact', t => {
     // CONTEXT
     const c = mock.context()
     let reacted
@@ -10,11 +10,14 @@ test('Purge aggregate using PURGED event', t => {
         .register(class {
             static canExecute() { return true }
             static identify() { return 'foo' }
-            execute() { return [Event.PURGED('gone')] }
+            execute() { return [Fact.PURGED('gone')] }
         })
         .register(class {
-            reactTo(event) {
-                reacted = event
+            static canReactTo() {
+                return true
+            }
+            reactTo(fact) {
+                reacted = fact
             }
         })
 
@@ -28,7 +31,7 @@ test('Purge aggregate using PURGED event', t => {
                 trace: 'here',
                 aggregateId: 'foo',
                 revision: 0,
-                events: [{
+                facts: [{
                     name: 'PURGED',
                     attributes: 'gone'
                 }]
@@ -39,5 +42,32 @@ test('Purge aggregate using PURGED event', t => {
                 name: 'PURGED',
                 attributes: 'gone'
             })
+            t.deepEqual(c.log.infos, [{
+                trace: 'here',
+                message: 'Executing',
+                attributes: {
+                    arguments: undefined,
+                    name: undefined,
+                },
+            }, {
+                trace: 'here',
+                message: 'Executed',
+                attributes: undefined,
+            }, {
+                trace: 'here',
+                message: 'Purging',
+                attributes: {
+                    aggregateId: 'foo',
+                },
+            }, {
+                trace: 'here_0',
+                message: 'Reacting',
+                attributes: {
+                    fact: {
+                        attributes: 'gone',
+                        name: 'PURGED'
+                    }
+                }
+            }])
         })
 })

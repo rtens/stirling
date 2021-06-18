@@ -1,6 +1,5 @@
-module.exports = class Command {
+module.exports = class Action {
     constructor(name) {
-        this.trace = defaultTrace()
         this.name = name
     }
 
@@ -20,11 +19,4 @@ module.exports = class Command {
             arguments: this.arguments
         }
     }
-}
-
-function defaultTrace() {
-    return 'TC_'
-        + Buffer.from('' + Math.random())
-            .toString('base64')
-            .substr(-10, 7)
 }
