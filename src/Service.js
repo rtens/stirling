@@ -21,6 +21,7 @@ module.exports = class Service {
             .then(() => findHandler.call(this, command, 'canExecute', 'UnknownCommand'))
             .then(handler => {
                 const aggregateId = handler.identify(command)
+                if (!aggregateId) throw new Error('Could not identify aggregate. Got: ' + aggregateId)
                 const instance = new handler()
                 let revision = 0
 

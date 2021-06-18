@@ -9,7 +9,7 @@ test('React to event', t => {
     c.service
         .register(class {
             static canExecute() { return true }
-            static identify() { return null }
+            static identify() { return 'foo' }
             execute() { return [new Event('Food', 'bar')] }
         })
         .register(class {
@@ -38,7 +38,7 @@ test('Log thrown errors', t => {
     c.service
         .register(class {
             static canExecute() { return true }
-            static identify() { return null }
+            static identify() { return 'foo' }
             execute() { return [new Event('Food', 'bar')] }
         })
         .register(class {
@@ -67,7 +67,7 @@ test('React multiple times', t => {
     c.service
         .register(class {
             static canExecute() { return true }
-            static identify() { return null }
+            static identify() { return 'foo' }
             execute() { return [new Event('Food', 'bar')] }
         })
         .register(class {

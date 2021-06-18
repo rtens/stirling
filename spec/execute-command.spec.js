@@ -290,6 +290,27 @@ test('Reject execution returning zero events', t => {
         })
 })
 
+test('Reject unidentified command', t => {
+    // CONDITION
+    const c = mock.context()
+    c.service
+        .register(class {
+            static identify() { return null }
+            static canExecute() { return true }
+            execute() { return [new Event('Food')] }
+        })
+
+    // ACTION
+    return c.service.execute(new Command('Foo'))
+
+        // EXPECTATION
+        .then(() => t.fail('Should have rejected'))
+        .catch(e => {
+            t.is(e.message, 'Could not identify aggregate. Got: null')
+            t.is(c.log.errors[0].error, e)
+        })
+})
+
 test('Provide defaults by convention', t => {
     // CONDITION
     const c = mock.context()
