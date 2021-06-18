@@ -9,33 +9,28 @@ Object.keys(journals).forEach(name => {
     const makeJournal = journals[name]
 
     test('Nothing to find with ' + name, t => {
-        // CONTEXT
+        // CONDITION
         const journal = makeJournal()
 
         // ACTION
         const records = []
         return journal.iterate(r => records.push(r))
 
-            //EXPECTATIONS
+            //EXPECTATION
             .then(() => t.deepEqual(records, []))
     })
 
     test('Record and iterate over records with ' + name, t => {
-        // CONTEXT
+        // CONDITION
         const journal = makeJournal()
         journal.record({
             aggregateId: 'foo',
-            revision: 42,
+            revision: 1,
             facts: ['one', 'two']
         })
         journal.record({
-            aggregateId: 'bar',
-            revision: 43,
-            facts: ['four']
-        })
-        journal.record({
-            aggregateId: 'bar',
-            revision: 42,
+            aggregateId: 'foo',
+            revision: 2,
             facts: ['three']
         })
 
@@ -43,24 +38,40 @@ Object.keys(journals).forEach(name => {
         const records = []
         return journal.iterate(r => records.push(r))
 
-            //EXPECTATIONS
+            //EXPECTATION
             .then(() => t.deepEqual(records, [{
-                aggregateId: 'bar',
-                revision: 42,
-                facts: ['three'],
-            }, {
-                aggregateId: 'bar',
-                revision: 43,
-                facts: ['four'],
+                aggregateId: 'foo',
+                revision: 1,
+                facts: ['one', 'two'],
             }, {
                 aggregateId: 'foo',
-                revision: 42,
-                facts: ['one', 'two'],
+                revision: 2,
+                facts: ['three'],
             }]))
     })
 
+    test('Sort records by revision with ' + name, t => {
+        // CONDITION
+        const journal = makeJournal()
+        for (let i = 0; i < 1000; i++) {
+            journal.record({
+                aggregateId: 'foo',
+                revision: i
+            })
+        }
+
+        // ACTION
+        let lastRevision = -1
+        return journal.iterate(record => {
+
+            //EXPECTATION
+             t.is(record.revision, lastRevision + 1)
+             lastRevision = record.revision
+        })
+    })
+
     test('Follow records with ' + name, t => {
-        // CONTEXT
+        // CONDITION
         const journal = makeJournal()
         let followed = []
         journal.follow(record => followed.push(record))
@@ -72,7 +83,7 @@ Object.keys(journals).forEach(name => {
             revision: 42
         })
 
-            //EXPECTATIONS
+            //EXPECTATION
             .then(() => t.deepEqual(followed, [
                 {
                     aggregateId: 'foo',
@@ -83,7 +94,7 @@ Object.keys(journals).forEach(name => {
     })
 
     test('Iterate over records of single aggregate with ' + name, t => {
-        // CONTEXT
+        // CONDITION
         const journal = makeJournal()
         journal.record({
             aggregateId: 'foo',
@@ -104,7 +115,7 @@ Object.keys(journals).forEach(name => {
         const records = []
         return journal.iterateAggregate('foo', r => records.push(r))
 
-            //EXPECTATIONS
+            //EXPECTATION
             .then(() => t.deepEqual(records, [{
                 aggregateId: 'foo',
                 revision: 42,
@@ -117,7 +128,7 @@ Object.keys(journals).forEach(name => {
     })
 
     test('Avoid revision conflicts with ' + name, t => {
-        // CONTEXT
+        // CONDITION
         const journal = makeJournal()
         return Promise.resolve()
             .then(() => journal.record({
@@ -131,13 +142,13 @@ Object.keys(journals).forEach(name => {
                 revision: 42
             }))
 
-            //EXPECTATIONS
+            //EXPECTATION
             .then(() => t.fail('Should have thrown'))
             .catch(err => t.not(err, null))
     })
 
     test('Purge records of an aggregate with ' + name, t => {
-        // CONTEXT
+        // CONDITION
         const journal = makeJournal()
         return Promise
             .all([
@@ -158,7 +169,7 @@ Object.keys(journals).forEach(name => {
             .then(() =>
                 journal.purge('foo'))
 
-            //EXPECTATIONS
+            //EXPECTATION
             .then(() => {
                 const records = []
                 return journal.iterate(r => records.push(r))

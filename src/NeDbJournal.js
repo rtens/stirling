@@ -51,9 +51,11 @@ module.exports = class NeDbJournal {
 
 function find(query, iterator) {
     return new Promise((y, n) =>
-        this.db.find(query, (err, records) =>
-            err ? n(err)
-                : y(records
-                    .map(record => delete record._id && record)
-                    .forEach(iterator))))
+        this.db.find(query)
+            .sort({ revision: 1 })
+            .exec((err, records) =>
+                err ? n(err)
+                    : y(records
+                        .map(record => delete record._id && record)
+                        .forEach(iterator))))
 }
