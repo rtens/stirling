@@ -1,6 +1,6 @@
 const test = require('ava');
 const mock = require('./mock')
-const { Command, Fact } = require('..')
+const { Command, Fact, Aggregate, Reaction } = require('..')
 
 test('React to fact', t => {
     // CONDITION
@@ -133,6 +133,43 @@ test('React multiple times', t => {
             t.deepEqual(reacted, [
                 ['one', 'Food'],
                 ['two', 'Bard'],
+            ])
+        })
+})
+
+test('Provide defaults by convention', t => {
+    // CONDITION
+    let reacted = []
+    const c = mock.context()
+    c.service
+        .register(class Foo extends Aggregate {
+            executeFoo() {
+                return [
+                    new Fact('Food', 'foo'),
+                    new Fact('Bard', 'bar'),
+                    new Fact('Bazd', 'baz')
+                ]
+            }
+        })
+        .register(class extends Reaction {
+            reactToFood(attributes) {
+                reacted.push(['food', attributes])
+            }
+            reactToBazd(attributes) {
+                reacted.push(['bazd', attributes])
+            }
+        })
+
+    // ACTION
+    return c.service.execute(new Command('Foo')
+        .withArguments({ fooId: 'foo' })
+        .withTrace('here'))
+
+        // EXPECTATION
+        .then(() => {
+            t.deepEqual(reacted, [
+                ['food', 'foo'],
+                ['bazd', 'baz']
             ])
         })
 })
