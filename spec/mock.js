@@ -8,8 +8,7 @@ class Journal {
     }
 
     record(record) {
-        record.facts = record.facts.map(e => ({ ...e }))
-        this.recorded.push(record)
+        this.recorded.push({...record, facts: record.facts.map(e => ({ ...e }))})
         return Promise.all(this.followers.map(f => f(record)))
     }
 
@@ -20,12 +19,6 @@ class Journal {
 
     iterate(iterator) {
         return Promise.resolve(this.records
-            .forEach(iterator))
-    }
-
-    iterateAggregate(aggregateId, iterator) {
-        return Promise.resolve(this.records
-            .filter(r => r.aggregateId == aggregateId)
             .forEach(iterator))
     }
 

@@ -140,14 +140,16 @@ test('Reconstitute aggregate', t => {
     const c = mock.context()
     c.journal.records = [{
         aggregateId: 'foo',
-        facts: ['one', 'two']
+        revision: 42,
+        facts: 'one'
     }, {
         aggregateId: 'bar',
-        facts: ['not']
+        revision: 21,
+        facts: 'two'
     }, {
-        aggregateId: 'foo',
-        revision: 42,
-        facts: ['three']
+        aggregateId: 'baz',
+        revision: 7,
+        facts: 'three'
     }]
 
     c.service
@@ -161,8 +163,8 @@ test('Reconstitute aggregate', t => {
             execute() {
                 return [new Fact('Done', this.applied)]
             }
-            apply(fact) {
-                this.applied = [...(this.applied || ['zero']), fact]
+            apply(record) {
+                this.applied = [...(this.applied || ['zero']), record.facts]
             }
         })
 
@@ -184,6 +186,46 @@ test('Reconstitute aggregate', t => {
                         'two',
                         'three'
                     ]
+                }]
+            }])
+        })
+})
+
+test('Do not reconstitute if entity has no apply method', t => {
+    // CONDITION
+    const c = mock.context()
+    c.journal.records = [{
+        aggregateId: 'foo',
+        revision: 42,
+        facts: 'one'
+    }]
+
+    c.service
+        .register(class {
+            static identify() {
+                return 'foo'
+            }
+            static canExecute() {
+                return true
+            }
+            execute() {
+                return [new Fact('Done')]
+            }
+        })
+
+    // ACTION
+    return c.service.execute((new Command('Foo')
+        .withTrace('here')))
+
+        // EXPECTATION
+        .then(() => {
+            t.deepEqual(c.journal.recorded, [{
+                trace: 'here',
+                aggregateId: 'foo',
+                revision: 43,
+                facts: [{
+                    name: 'Done',
+                    attributes: null
                 }]
             }])
         })
@@ -314,6 +356,12 @@ test('Provide defaults by convention', t => {
             name: 'Bazd',
             attributes: 'two'
         }]
+    }, {
+        aggregateId: 'bar',
+        facts: [{
+            name: 'Food',
+            attributes: 'not'
+        }]
     }]
 
     c.service
@@ -344,6 +392,7 @@ test('Provide defaults by convention', t => {
                     name: 'Done',
                     attributes: {
                         args: { oneId: 'foo' },
+                        id: 'foo',
                         applied: ['one', 'two']
                     }
                 }]

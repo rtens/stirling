@@ -1,22 +1,25 @@
-module.exports = class Aggregate {
+const Entity = require('./Entity')
+
+module.exports = class Aggregate extends Entity {
 
     static canExecute(command) {
         return this.prototype['execute' + command.name]
             && this.identify(command)
     }
 
-    static identify(command) {
+    static identify(action) {
         const identifierName = this.name[0].toLowerCase() + this.name.slice(1) + 'Id'
 
-        return command.arguments
-            && command.arguments[identifierName]
+        return action.arguments
+            && action.arguments[identifierName]
     }
 
     execute(command) {
         return this['execute' + command.name](command.arguments)
     }
 
-    apply(fact) {
-        this['apply' + fact.name] && this['apply' + fact.name](fact.attributes)
+    apply(record) {
+        if (record.aggregateId != this.id) return
+        super.apply(record)
     }
 }

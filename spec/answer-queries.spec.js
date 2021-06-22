@@ -160,8 +160,8 @@ test('Reconstitute projection', t => {
     // CONDITION
     const c = mock.context()
     c.journal.records = [
-        { facts: ['one', 'two'] },
-        { facts: ['three'] }
+        { facts: 'one' },
+        { facts: 'two' }
     ]
     c.service
         .register(class {
@@ -171,8 +171,8 @@ test('Reconstitute projection', t => {
             answer() {
                 return { ...this }
             }
-            apply(fact) {
-                this.applied = [...(this.applied || ['zero']), fact]
+            apply(record) {
+                this.applied = [...(this.applied || ['zero']), record.facts]
             }
         })
 
@@ -182,7 +182,7 @@ test('Reconstitute projection', t => {
         // EXPECTATION
         .then(response => {
             t.deepEqual(response, {
-                applied: ['zero', 'one', 'two', 'three']
+                applied: ['zero', 'one', 'two']
             })
         })
 })

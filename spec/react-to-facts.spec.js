@@ -4,8 +4,8 @@ const { Command, Fact } = require('..')
 
 test('React to fact', t => {
     // CONDITION
-    const c = mock.context()
     let reacted
+    const c = mock.context()
     c.service
         .register(class {
             static canExecute() { return true }
@@ -13,11 +13,8 @@ test('React to fact', t => {
             execute() { return [new Fact('Food', 'bar')] }
         })
         .register(class {
-            static canReactTo(fact) {
-                return fact.name == 'Food'
-            }
-            reactTo(fact, trace) {
-                reacted = { ...fact, trace }
+            reactTo(record) {
+                reacted = { ...record.facts[0] }
             }
         })
 
@@ -29,8 +26,7 @@ test('React to fact', t => {
         .then(() => {
             t.deepEqual(reacted, {
                 name: 'Food',
-                attributes: 'bar',
-                trace: 'here_0'
+                attributes: 'bar'
             })
         })
 })
@@ -45,9 +41,6 @@ test('Log thrown errors', t => {
             execute() { return [new Fact('Food', 'bar')] }
         })
         .register(class {
-            static canReactTo() {
-                return true
-            }
             reactTo() {
                 throw 'Boom!'
             }
@@ -60,9 +53,48 @@ test('Log thrown errors', t => {
         // EXPECTATION
         .then(() => {
             t.deepEqual(c.log.errors, [{
-                trace: 'here_0',
+                trace: 'here',
                 error: 'Boom!'
             }])
+        })
+})
+
+test('Reconstitute reaction', t => {
+    // CONDITION
+    let reacted
+    const c = mock.context()
+    c.journal.records = [
+        { facts: 'one' },
+        { facts: 'two' }
+    ]
+    c.service
+        .register(class {
+            static canExecute() { return true }
+            static identify() { return 'foo' }
+            execute() { return [new Fact('Food', 'bar')] }
+        })
+        .register(class {
+            apply(record) {
+                this.applied = [...(this.applied || ['zero']), record.facts]
+            }
+            reactTo(record) {
+                reacted = { facts: record.facts.map(f => ({ ...f })), applied: this.applied }
+            }
+        })
+
+    // ACTION
+    return c.service.execute(new Command()
+        .withTrace('here'))
+
+        // EXPECTATION
+        .then(() => {
+            t.deepEqual(reacted, {
+                facts: [{
+                    name: 'Food',
+                    attributes: 'bar'
+                }],
+                applied: ['zero', 'one', 'two']
+            })
         })
 })
 
@@ -82,19 +114,13 @@ test('React multiple times', t => {
             }
         })
         .register(class {
-            static canReactTo(fact) {
-                return fact.name == 'Food'
-            }
-            reactTo(fact) {
-                reacted.push(['one', fact.name])
+            reactTo(record) {
+                reacted.push(['one', record.facts[0].name])
             }
         })
         .register(class {
-            static canReactTo() {
-                return true
-            }
-            reactTo(fact) {
-                reacted.push(['two', fact.name])
+            reactTo(record) {
+                reacted.push(['two', record.facts[1].name])
             }
         })
 
@@ -106,47 +132,7 @@ test('React multiple times', t => {
         .then(() => {
             t.deepEqual(reacted, [
                 ['one', 'Food'],
-                ['two', 'Food'],
                 ['two', 'Bard'],
             ])
-            t.deepEqual(c.log.infos, [{
-                trace: 'here',
-                message: 'Executing',
-                attributes: {
-                    arguments: undefined,
-                    name: undefined,
-                },
-            }, {
-                trace: 'here',
-                message: 'Executed',
-                attributes: undefined,
-            }, {
-                trace: 'here_0',
-                message: 'Reacting',
-                attributes: {
-                    fact: {
-                        attributes: null,
-                        name: 'Food',
-                    },
-                },
-            }, {
-                trace: 'here_1',
-                message: 'Reacting',
-                attributes: {
-                    fact: {
-                        attributes: null,
-                        name: 'Food',
-                    },
-                },
-            }, {
-                trace: 'here_2',
-                message: 'Reacting',
-                attributes: {
-                    fact: {
-                        attributes: null,
-                        name: 'Bard',
-                    },
-                },
-            }])
         })
 })

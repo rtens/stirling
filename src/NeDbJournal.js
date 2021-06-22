@@ -36,10 +36,6 @@ module.exports = class NeDbJournal {
         return find.call(this, {}, iterator)
     }
 
-    iterateAggregate(aggregateId, iterator) {
-        return find.call(this, { aggregateId }, iterator)
-    }
-
     purge(aggregateId) {
         return new Promise((y, n) =>
             this.db.remove(

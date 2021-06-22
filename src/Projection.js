@@ -1,4 +1,6 @@
-module.exports = class Projection {
+const Entity = require('./Entity')
+
+module.exports = class Projection extends Entity {
 
     static canAnswer(query) {
         return this.prototype['answer' + query.name]
@@ -6,9 +8,5 @@ module.exports = class Projection {
 
     answer(query) {
         return this['answer' + query.name](query.arguments)
-    }
-
-    apply(fact) {
-        this[['apply' + fact.name]] && this[['apply' + fact.name]](fact.attributes)
     }
 }

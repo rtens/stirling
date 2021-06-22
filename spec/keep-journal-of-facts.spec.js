@@ -93,40 +93,6 @@ Object.keys(journals).forEach(name => {
             ]))
     })
 
-    test('Iterate over records of single aggregate with ' + name, t => {
-        // CONDITION
-        const journal = makeJournal()
-        journal.record({
-            aggregateId: 'foo',
-            revision: 42,
-            facts: ['one']
-        })
-        journal.record({
-            aggregateId: 'bar',
-            revision: 42
-        })
-        journal.record({
-            aggregateId: 'foo',
-            revision: 43,
-            facts: ['two']
-        })
-
-        // ACTION
-        const records = []
-        return journal.iterateAggregate('foo', r => records.push(r))
-
-            //EXPECTATION
-            .then(() => t.deepEqual(records, [{
-                aggregateId: 'foo',
-                revision: 42,
-                facts: ['one']
-            }, {
-                aggregateId: 'foo',
-                revision: 43,
-                facts: ['two']
-            }]))
-    })
-
     test('Avoid revision conflicts with ' + name, t => {
         // CONDITION
         const journal = makeJournal()

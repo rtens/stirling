@@ -16,8 +16,8 @@ test('Purge aggregate using PURGED fact', t => {
             static canReactTo() {
                 return true
             }
-            reactTo(fact) {
-                reacted = fact
+            reactTo(record) {
+                reacted = {...record.facts[0]}
             }
         })
 
@@ -42,32 +42,12 @@ test('Purge aggregate using PURGED fact', t => {
                 name: 'PURGED',
                 attributes: 'gone'
             })
-            t.deepEqual(c.log.infos, [{
-                trace: 'here',
-                message: 'Executing',
-                attributes: {
-                    arguments: undefined,
-                    name: undefined,
-                },
-            }, {
-                trace: 'here',
-                message: 'Executed',
-                attributes: undefined,
-            }, {
+            t.deepEqual(c.log.infos.slice(2), [{
                 trace: 'here',
                 message: 'Purging',
                 attributes: {
                     aggregateId: 'foo',
                 },
-            }, {
-                trace: 'here_0',
-                message: 'Reacting',
-                attributes: {
-                    fact: {
-                        attributes: 'gone',
-                        name: 'PURGED'
-                    }
-                }
             }])
         })
 })
