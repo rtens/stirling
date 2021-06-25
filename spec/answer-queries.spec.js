@@ -14,9 +14,8 @@ test('Reject unknown query', t => {
         // EXPECTATION
         .then(() => t.fail('Should have rejected'))
         .catch(e => {
-            t.assert(e instanceof Violation.UnknownAction)
+            t.assert(e instanceof Violation.UnknownQuery)
             t.deepEqual(e.details, {
-                action: 'query',
                 name: 'Foo',
                 arguments: 'bar'
             })
@@ -31,9 +30,8 @@ test('Reject unknown query', t => {
                 }
             }, {
                 trace: 'here',
-                message: 'Violation: UNKNOWN_ACTION',
+                message: 'Violation: UNKNOWN_QUERY',
                 attributes: {
-                    action: 'query',
                     name: 'Foo',
                     arguments: 'bar'
                 }
@@ -41,11 +39,11 @@ test('Reject unknown query', t => {
         })
 })
 
-test('Respond with answer', t => {
+test('Return answer', t => {
     // CONDITION
     const c = mock.context()
-    c.service
-        .register(class {
+    c.registry
+        .addProjection(class {
             static canAnswer(query) {
                 return query.name == 'Foo'
             }
@@ -60,8 +58,8 @@ test('Respond with answer', t => {
         .withTrace('here'))
 
         // EXPECTATION
-        .then(response => {
-            t.deepEqual(response, ['Foo', 'bar'])
+        .then(answer => {
+            t.deepEqual(answer, ['Foo', 'bar'])
             t.deepEqual(c.log.infos.slice(1), [{
                 trace: 'here',
                 message: 'Answered',
@@ -73,21 +71,17 @@ test('Respond with answer', t => {
 test('Find first that can answer', t => {
     // CONDITION
     const c = mock.context()
-    c.service
-        .register(class {
+    c.registry
+        .addProjection(class {
+            static canAnswer() { return false }
         })
-        .register(class {
-            static canAnswer() {
-                return false
-            }
+        .addProjection(class {
+            static canAnswer() { return true }
+            answer() { return 42 }
         })
-        .register(class {
-            static canAnswer() {
-                return true
-            }
-            answer() {
-                return 42
-            }
+        .addProjection(class {
+            static canAnswer() { return true }
+            answer() { return 21 }
         })
 
     // ACTION
@@ -102,11 +96,9 @@ test('Find first that can answer', t => {
 test('Reject violating answer', t => {
     // CONDITION
     const c = mock.context()
-    c.service
-        .register(class {
-            static canAnswer() {
-                return true
-            }
+    c.registry
+        .addProjection(class {
+            static canAnswer() { return true }
             answer() {
                 throw new Violation.Generic('BOOM', 'Something went boom', { went: 'boom' })
             }
@@ -133,11 +125,9 @@ test('Reject violating answer', t => {
 test('Reject failing answer', t => {
     // CONDITION
     const c = mock.context()
-    c.service
-        .register(class {
-            static canAnswer() {
-                return true
-            }
+    c.registry
+        .addProjection(class {
+            static canAnswer() { return true }
             answer() {
                 throw 'Boom!'
             }
@@ -163,16 +153,14 @@ test('Reconstitute projection', t => {
         { facts: 'one' },
         { facts: 'two' }
     ]
-    c.service
-        .register(class {
-            static canAnswer() {
-                return true
-            }
+    c.registry
+        .addProjection(class {
+            static canAnswer() { return true }
             answer() {
                 return { ...this }
             }
-            apply(record) {
-                this.applied = [...(this.applied || ['zero']), record.facts]
+            project(record) {
+                this.projected = [...(this.projected || ['zero']), record.facts]
             }
         })
 
@@ -182,7 +170,7 @@ test('Reconstitute projection', t => {
         // EXPECTATION
         .then(response => {
             t.deepEqual(response, {
-                applied: ['zero', 'one', 'two']
+                projected: ['zero', 'one', 'two']
             })
         })
 })
@@ -197,24 +185,24 @@ test('Provide defaults by convention', t => {
             { name: 'Bazd', attributes: 'baz' },
         ]
     }]
-    c.service
-        .register(class extends Projection {
+    c.registry
+        .addProjection(class extends Projection {
             answerFoo() {
                 return ['Foo', ...this.applied]
             }
-            applyFood(attributes) {
+            projectFood(attributes) {
                 this.applied = [attributes]
             }
-            applyBazd(attributes) {
+            projectBazd(attributes) {
                 this.applied.push(attributes)
             }
         })
-        .register(class extends Projection {
+        .addProjection(class extends Projection {
             answerBar() {
-                return ['Bar', this.applied]
+                return ['Bar', this.projected]
             }
-            applyBard(attributes) {
-                this.applied = attributes
+            projectBard(attributes) {
+                this.projected = attributes
             }
         })
 

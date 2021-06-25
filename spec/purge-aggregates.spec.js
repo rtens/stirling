@@ -6,16 +6,13 @@ test('Purge aggregate using PURGED fact', t => {
     // CONTEXT
     const c = mock.context()
     let reacted
-    c.service
-        .register(class {
+    c.registry
+        .addAggregate(class {
             static canExecute() { return true }
             static identify() { return 'foo' }
             execute() { return [Fact.PURGED('gone')] }
         })
-        .register(class {
-            static canReactTo() {
-                return true
-            }
+        .addReaction(class {
             reactTo(record) {
                 reacted = {...record.facts[0]}
             }

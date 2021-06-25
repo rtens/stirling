@@ -1,4 +1,4 @@
-module.exports = class Action {
+module.exports = class Query {
     constructor(name) {
         this.name = name
     }

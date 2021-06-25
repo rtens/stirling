@@ -1,6 +1,7 @@
 const express = require('express')
 const Violation = require('./Violation')
-const Action = require('./Action')
+const Command = require('./Command')
+const Query = require('./Query')
 
 module.exports = class ExpressServer {
     constructor(service, random = defaultRandom) {
@@ -22,7 +23,7 @@ module.exports = class ExpressServer {
     post(req, res) {
         const trace = this.random()
 
-        return this.service.execute(new Action(req.params.command)
+        return this.service.execute(new Command(req.params.command)
             .withArguments(req.body)
             .withTrace(trace))
             .then(() => res.end())
@@ -32,7 +33,7 @@ module.exports = class ExpressServer {
     get(req, res) {
         const trace = this.random()
 
-        return this.service.answer(new Action(req.params.query)
+        return this.service.answer(new Query(req.params.query)
             .withArguments(req.query)
             .withTrace(trace))
             .then(answer => res.send(answer).end())
@@ -53,7 +54,8 @@ function handleError(error, trace, res) {
 }
 
 function errorStatus(violation) {
-    if (violation instanceof Violation.UnknownAction) return 404
+    if (violation instanceof Violation.UnknownCommand) return 404
+    if (violation instanceof Violation.UnknownQuery) return 404
     if (violation instanceof Violation.BusinessRule) return 409
     return 400
 }

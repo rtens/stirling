@@ -1,6 +1,4 @@
-const Entity = require('./Entity')
-
-module.exports = class Aggregate extends Entity {
+module.exports = class Aggregate {
 
     static canExecute(command) {
         return this.prototype['execute' + command.name]
@@ -14,12 +12,13 @@ module.exports = class Aggregate extends Entity {
             && action.arguments[identifierName]
     }
 
-    execute(command) {
-        return this['execute' + command.name](command.arguments)
+    apply(record) {
+        record.facts
+            .filter(fact => this[['apply' + fact.name]])
+            .forEach(fact => this[['apply' + fact.name]](fact.attributes))
     }
 
-    apply(record) {
-        if (record.aggregateId != this.id) return
-        super.apply(record)
+    execute(command) {
+        return this['execute' + command.name](command.arguments)
     }
 }

@@ -1,6 +1,4 @@
-const Entity = require('./Entity')
-
-module.exports = class Reaction extends Entity {
+module.exports = class Reaction {
 
     reactTo(record) {
         record.facts

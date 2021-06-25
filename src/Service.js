@@ -3,55 +3,51 @@ const Fact = require('./Fact')
 const Record = require('./Record')
 
 module.exports = class Service {
-    constructor(journal, log) {
+    constructor(registry, journal, log) {
+        this.registry = registry
         this.journal = journal
         this.log = log
-
-        this.entities = []
-    }
-
-    register(entity) {
-        this.entities.push(entity)
-        return this
     }
 
     execute(command) {
-        const trace = command.trace
-        this.log.info(trace, 'Executing', command.attributes())
+        this.log.info(command.trace, 'Executing', command.attributes())
 
-        return handle.call(this, trace, () => Promise.resolve()
-            .then(() => findEntity.call(this, command, 'canExecute', 'command'))
-            .then(entity => {
-                const aggregateId = entity.identify(command)
+        return handle.call(this, command.trace, () => Promise.resolve()
+            .then(() => this.registry.findAggregateExecuting(command))
+            .then(aggregateClass => {
+                const aggregateId = aggregateClass.identify(command)
                 if (!aggregateId) throw new Error('Could not identify aggregate. Got: ' + aggregateId)
-                const instance = new entity(aggregateId)
+                
+                const aggregate = new aggregateClass()
                 let revision = 0
 
                 return Promise.resolve()
                     .then(() => this.journal.iterate(record => {
-                        instance.apply && instance.apply(record)
-                        if (record.aggregateId == aggregateId) revision = record.revision + 1
+                        if (record.aggregateId != aggregateId) return
+
+                        aggregate.apply(record)
+                        revision = record.revision + 1
                     }))
-                    .then(() => instance.execute(command))
+                    .then(() => aggregate.execute(command))
                     .then(facts => validateFacts(facts)
-                        && new Record(trace, aggregateId, revision, facts))
+                        && new Record(command.trace, aggregateId, revision, facts))
                     .then(record => this.journal.record(record)
-                        .then(() => this.log.info(trace, 'Executed'))
+                        .then(() => this.log.info(command.trace, 'Executed'))
                         .then(() => this.reactTo(record)))
             }))
     }
 
     answer(query) {
-        const trace = query.trace
-        this.log.info(trace, 'Answering', query.attributes())
+        this.log.info( query.trace, 'Answering', query.attributes())
 
-        return handle.call(this, trace, () => Promise.resolve()
-            .then(() => findEntity.call(this, query, 'canAnswer', 'query'))
-            .then(entity => new entity())
-            .then(instance => Promise.resolve()
-                .then(() => this.journal.iterate(record => instance.apply(record)))
-                .then(() => instance.answer(query)))
-            .then(answer => this.log.info(trace, 'Answered') || answer))
+        return handle.call(this,  query.trace, () => Promise.resolve()
+            .then(() => this.registry.findProjectionAnswering(query))
+            .then(projectionClass => new projectionClass())
+            .then(projection => Promise.resolve()
+                .then(() => this.journal.iterate(record =>
+                    projection.project(record)))
+                .then(() => projection.answer(query)))
+            .then(answer => this.log.info( query.trace, 'Answered') || answer))
     }
 
     reactTo(record) {
@@ -60,20 +56,12 @@ module.exports = class Service {
             this.journal.purge(record.aggregateId)
         }
 
-        this.entities
-            .filter(entity => entity.prototype.reactTo)
-            .map(entity => new entity())
-            .forEach(instance => Promise.resolve()
-                .then(() => this.journal.iterate(record => instance.apply(record)))
-                .then(() => instance.reactTo(record))
+        this.registry.allReactions()
+            .map(reactionClass => new reactionClass())
+            .forEach(reaction => Promise.resolve()
+                .then(() => reaction.reactTo(record))
                 .catch(e => this.log.error(record.trace, e)))
     }
-}
-
-function findEntity(action, tester, type) {
-    const entity = this.entities.find(e => e[tester] && e[tester](action))
-    if (!entity) return Promise.reject(new Violation.UnknownAction({ action: type, ...action.attributes() }))
-    return entity
 }
 
 function handle(trace, using) {

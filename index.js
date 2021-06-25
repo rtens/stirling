@@ -1,8 +1,9 @@
 module.exports = {
     Service: require('./src/Service'),
-    Command: require('./src/Action'),
+    Registry: require('./src/Registry'),
+    Command: require('./src/Command'),
     Aggregate: require('./src/Aggregate'),
-    Query: require('./src/Action'),
+    Query: require('./src/Query'),
     Projection: require('./src/Projection'),
     Reaction: require('./src/Reaction'),
     Violation: require('./src/Violation'),

@@ -65,35 +65,54 @@ test('Answer query with GET request', t => {
     })
 })
 
-test('Respond with 404 if query of command is unknown', t => {
+test('Respond with 404 if command is unknown', t => {
     // CONDITION
     const service = {
-        execute: () => Promise.reject(new Violation.UnknownAction('SomeCommand')),
-        answer: () => Promise.reject(new Violation.UnknownAction('SomeQuery'))
+        execute: () => Promise.reject(new Violation.UnknownCommand('SomeCommand')),
     }
     const server = new ExpressServer(service, random)
 
     // ACTION
-    return Promise.all([
-        ['post', 'SomeCommand'],
-        ['get', 'SomeQuery']
-    ].map(([method, details]) => {
-        const res = new Response()
-        server[method]({ params: {}, body: {} }, res).then(() => {
+    const res = new Response()
+    return server.post({ params: {}, body: {} }, res).then(() => {
 
-            // EXPECTATION
-            t.deepEqual(res.set, {
-                status: 404,
-                send: {
-                    trace: 'random',
-                    error: 'UNKNOWN_ACTION',
-                    message: 'This action is unknown. Did you misspell it?',
-                    details
-                },
-                end: true
-            })
+        // EXPECTATION
+        t.deepEqual(res.set, {
+            status: 404,
+            send: {
+                trace: 'random',
+                error: 'UNKNOWN_COMMAND',
+                message: 'This command is unknown. Did you misspell it?',
+                details: 'SomeCommand'
+            },
+            end: true
         })
-    }))
+    })
+})
+
+test('Respond with 404 if query or command is unknown', t => {
+    // CONDITION
+    const service = {
+        answer: () => Promise.reject(new Violation.UnknownQuery('SomeQuery'))
+    }
+    const server = new ExpressServer(service, random)
+
+    // ACTION
+    const res = new Response()
+    return server.get({ params: {}, body: {} }, res).then(() => {
+
+        // EXPECTATION
+        t.deepEqual(res.set, {
+            status: 404,
+            send: {
+                trace: 'random',
+                error: 'UNKNOWN_QUERY',
+                message: 'This query is unknown. Did you misspell it?',
+                details: 'SomeQuery'
+            },
+            end: true
+        })
+    })
 })
 
 test('Respond with 409 if command violates a business rule', t => {

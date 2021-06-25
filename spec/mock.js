@@ -1,4 +1,5 @@
 const Service = require('../src/Service')
+const Registry = require('../src/Registry')
 
 class Journal {
     constructor() {
@@ -43,11 +44,12 @@ class Log {
 }
 
 function context() {
+    const registry = new Registry()
     const journal = new Journal()
     const log = new Log()
-    const service = new Service(journal, log)
+    const service = new Service(registry, journal, log)
 
-    return { service, journal, log }
+    return { service, registry, journal, log }
 }
 
 module.exports = {

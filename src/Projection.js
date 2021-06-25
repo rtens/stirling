@@ -1,9 +1,13 @@
-const Entity = require('./Entity')
-
-module.exports = class Projection extends Entity {
+module.exports = class Projection {
 
     static canAnswer(query) {
         return this.prototype['answer' + query.name]
+    }
+
+    project(record) {
+        record.facts
+            .filter(fact => this[['project' + fact.name]])
+            .forEach(fact => this[['project' + fact.name]](fact.attributes))
     }
 
     answer(query) {

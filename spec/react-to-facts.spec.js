@@ -6,13 +6,13 @@ test('React to fact', t => {
     // CONDITION
     let reacted
     const c = mock.context()
-    c.service
-        .register(class {
+    c.registry
+        .addAggregate(class {
             static canExecute() { return true }
             static identify() { return 'foo' }
             execute() { return [new Fact('Food', 'bar')] }
         })
-        .register(class {
+        .addReaction(class {
             reactTo(record) {
                 reacted = { ...record.facts[0] }
             }
@@ -34,13 +34,13 @@ test('React to fact', t => {
 test('Log thrown errors', t => {
     // CONDITION
     const c = mock.context()
-    c.service
-        .register(class {
+    c.registry
+        .addAggregate(class {
             static canExecute() { return true }
             static identify() { return 'foo' }
             execute() { return [new Fact('Food', 'bar')] }
         })
-        .register(class {
+        .addReaction(class {
             reactTo() {
                 throw 'Boom!'
             }
@@ -59,51 +59,12 @@ test('Log thrown errors', t => {
         })
 })
 
-test('Reconstitute reaction', t => {
-    // CONDITION
-    let reacted
-    const c = mock.context()
-    c.journal.records = [
-        { facts: 'one' },
-        { facts: 'two' }
-    ]
-    c.service
-        .register(class {
-            static canExecute() { return true }
-            static identify() { return 'foo' }
-            execute() { return [new Fact('Food', 'bar')] }
-        })
-        .register(class {
-            apply(record) {
-                this.applied = [...(this.applied || ['zero']), record.facts]
-            }
-            reactTo(record) {
-                reacted = { facts: record.facts.map(f => ({ ...f })), applied: this.applied }
-            }
-        })
-
-    // ACTION
-    return c.service.execute(new Command()
-        .withTrace('here'))
-
-        // EXPECTATION
-        .then(() => {
-            t.deepEqual(reacted, {
-                facts: [{
-                    name: 'Food',
-                    attributes: 'bar'
-                }],
-                applied: ['zero', 'one', 'two']
-            })
-        })
-})
-
 test('React multiple times', t => {
     // CONDITION
     const c = mock.context()
     let reacted = []
-    c.service
-        .register(class {
+    c.registry
+        .addAggregate(class {
             static canExecute() { return true }
             static identify() { return 'foo' }
             execute() {
@@ -113,12 +74,12 @@ test('React multiple times', t => {
                 ]
             }
         })
-        .register(class {
+        .addReaction(class {
             reactTo(record) {
                 reacted.push(['one', record.facts[0].name])
             }
         })
-        .register(class {
+        .addReaction(class {
             reactTo(record) {
                 reacted.push(['two', record.facts[1].name])
             }
@@ -141,9 +102,11 @@ test('Provide defaults by convention', t => {
     // CONDITION
     let reacted = []
     const c = mock.context()
-    c.service
-        .register(class Foo extends Aggregate {
-            executeFoo() {
+    c.registry
+        .addAggregate(class {
+            static canExecute() { return true }
+            static identify() { return 'foo' }
+            execute() {
                 return [
                     new Fact('Food', 'foo'),
                     new Fact('Bard', 'bar'),
@@ -151,7 +114,7 @@ test('Provide defaults by convention', t => {
                 ]
             }
         })
-        .register(class extends Reaction {
+        .addReaction(class extends Reaction {
             reactToFood(attributes) {
                 reacted.push(['food', attributes])
             }
@@ -162,7 +125,6 @@ test('Provide defaults by convention', t => {
 
     // ACTION
     return c.service.execute(new Command('Foo')
-        .withArguments({ fooId: 'foo' })
         .withTrace('here'))
 
         // EXPECTATION

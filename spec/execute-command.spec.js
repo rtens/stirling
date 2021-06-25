@@ -14,9 +14,8 @@ test('Reject unknown command', t => {
         // EXPECTATION
         .then(() => t.fail('Should have rejected'))
         .catch(e => {
-            t.assert(e instanceof Violation.UnknownAction)
+            t.assert(e instanceof Violation.UnknownCommand)
             t.deepEqual(e.details, {
-                action: 'command',
                 name: 'Foo',
                 arguments: 'bar'
             })
@@ -32,9 +31,8 @@ test('Reject unknown command', t => {
                 }
             }, {
                 trace: 'here',
-                message: 'Violation: UNKNOWN_ACTION',
+                message: 'Violation: UNKNOWN_COMMAND',
                 attributes: {
-                    action: 'command',
                     name: 'Foo',
                     arguments: 'bar'
                 }
@@ -45,13 +43,13 @@ test('Reject unknown command', t => {
 test('Record facts', t => {
     // CONDITION
     const c = mock.context()
-    c.service
-        .register(class {
-            static identify(command) {
-                return command.arguments
-            }
+    c.registry
+        .addAggregate(class {
             static canExecute(command) {
                 return command.name == 'Foo'
+            }
+            static identify(command) {
+                return command.arguments
             }
             execute(command) {
                 return [
@@ -89,31 +87,35 @@ test('Record facts', t => {
         })
 })
 
-test('Find first who can execute the command', t => {
+test('Find first that can execute the command', t => {
     // CONDITION
     const c = mock.context()
-    c.service
-        .register(class {
-        })
-        .register(class {
+    c.registry
+        .addAggregate(class {
             static canExecute() {
                 return false
             }
         })
-        .register(class {
-            static identify() {
-                return 'foo'
-            }
+        .addAggregate(class {
             static canExecute() {
                 return true
+            }
+            static identify() {
+                return 'foo'
             }
             execute() {
                 return [new Fact('food')]
             }
         })
-        .register(class {
+        .addAggregate(class {
             static canExecute() {
                 return true
+            }
+            static identify() {
+                return 'bar'
+            }
+            execute() {
+                return [new Fact('bard')]
             }
         })
 
@@ -140,31 +142,28 @@ test('Reconstitute aggregate', t => {
     const c = mock.context()
     c.journal.records = [{
         aggregateId: 'foo',
-        revision: 42,
+        revision: 7,
         facts: 'one'
     }, {
         aggregateId: 'bar',
         revision: 21,
-        facts: 'two'
+        facts: 'not'
     }, {
-        aggregateId: 'baz',
-        revision: 7,
-        facts: 'three'
+        aggregateId: 'foo',
+        revision: 42,
+        facts: 'two'
     }]
 
-    c.service
-        .register(class {
-            static identify() {
-                return 'foo'
-            }
-            static canExecute() {
-                return true
+    c.registry
+        .addAggregate(class {
+            static canExecute() { return true }
+            static identify() { return 'foo' }
+
+            apply(record) {
+                this.applied = [...(this.applied || ['zero']), record.facts]
             }
             execute() {
                 return [new Fact('Done', this.applied)]
-            }
-            apply(record) {
-                this.applied = [...(this.applied || ['zero']), record.facts]
             }
         })
 
@@ -183,49 +182,8 @@ test('Reconstitute aggregate', t => {
                     attributes: [
                         'zero',
                         'one',
-                        'two',
-                        'three'
+                        'two'
                     ]
-                }]
-            }])
-        })
-})
-
-test('Do not reconstitute if entity has no apply method', t => {
-    // CONDITION
-    const c = mock.context()
-    c.journal.records = [{
-        aggregateId: 'foo',
-        revision: 42,
-        facts: 'one'
-    }]
-
-    c.service
-        .register(class {
-            static identify() {
-                return 'foo'
-            }
-            static canExecute() {
-                return true
-            }
-            execute() {
-                return [new Fact('Done')]
-            }
-        })
-
-    // ACTION
-    return c.service.execute((new Command('Foo')
-        .withTrace('here')))
-
-        // EXPECTATION
-        .then(() => {
-            t.deepEqual(c.journal.recorded, [{
-                trace: 'here',
-                aggregateId: 'foo',
-                revision: 43,
-                facts: [{
-                    name: 'Done',
-                    attributes: null
                 }]
             }])
         })
@@ -234,14 +192,10 @@ test('Do not reconstitute if entity has no apply method', t => {
 test('Reject violating execution', t => {
     // CONDITION
     const c = mock.context()
-    c.service
-        .register(class {
-            static identify() {
-                return 'bar'
-            }
-            static canExecute() {
-                return true
-            }
+    c.registry
+        .addAggregate(class {
+            static canExecute() { return true }
+            static identify() { return 'bar' }
             execute() {
                 throw new Violation.Generic('BOOM', 'Something went boom', { went: 'boom' })
             }
@@ -267,17 +221,11 @@ test('Reject violating execution', t => {
 test('Reject failing execution', t => {
     // CONDITION
     const c = mock.context()
-    c.service
-        .register(class {
-            static identify() {
-                return 'bar'
-            }
-            static canExecute() {
-                return true
-            }
-            execute() {
-                throw 'Boom!'
-            }
+    c.registry
+        .addAggregate(class {
+            static canExecute() { return true }
+            static identify() { return 'bar' }
+            execute() { throw 'Boom!' }
         })
 
     // ACTION
@@ -301,10 +249,10 @@ test('Reject failing execution', t => {
     test('Reject execution returning ' + description, t => {
         // CONDITION
         const c = mock.context()
-        c.service
-            .register(class {
-                static identify() { return 'foo' }
+        c.registry
+            .addAggregate(class {
                 static canExecute() { return true }
+                static identify() { return 'foo' }
                 execute() { return returnValue }
             })
 
@@ -322,8 +270,8 @@ test('Reject failing execution', t => {
 test('Reject unidentified command', t => {
     // CONDITION
     const c = mock.context()
-    c.service
-        .register(class {
+    c.registry
+        .addAggregate(class {
             static identify() { return null }
             static canExecute() { return true }
             execute() { return [new Fact('Food')] }
@@ -356,24 +304,18 @@ test('Provide defaults by convention', t => {
             name: 'Bazd',
             attributes: 'two'
         }]
-    }, {
-        aggregateId: 'bar',
-        facts: [{
-            name: 'Food',
-            attributes: 'not'
-        }]
     }]
 
-    c.service
-        .register(class One extends Aggregate {
-            executeFoo(args) {
-                return [new Fact('Done', { args, ...this })]
-            }
+    c.registry
+        .addAggregate(class One extends Aggregate {
             applyFood(attributes) {
                 this.applied = [attributes]
             }
             applyBazd(attributes) {
                 this.applied.push(attributes)
+            }
+            executeFoo(args) {
+                return [new Fact('Done', { args, ...this })]
             }
         })
 
@@ -392,7 +334,6 @@ test('Provide defaults by convention', t => {
                     name: 'Done',
                     attributes: {
                         args: { oneId: 'foo' },
-                        id: 'foo',
                         applied: ['one', 'two']
                     }
                 }]

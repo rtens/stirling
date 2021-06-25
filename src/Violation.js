@@ -15,9 +15,15 @@ class Generic extends Error {
     }
 }
 
-class UnknownAction extends Generic {
+class UnknownCommand extends Generic {
     constructor(details) {
-        super('UNKNOWN_ACTION', 'This action is unknown. Did you misspell it?', details)
+        super('UNKNOWN_COMMAND', 'This command is unknown. Did you misspell it?', details)
+    }
+}
+
+class UnknownQuery extends Generic {
+    constructor(details) {
+        super('UNKNOWN_QUERY', 'This query is unknown. Did you misspell it?', details)
     }
 }
 
@@ -29,6 +35,7 @@ class BusinessRule extends Generic {
 
 module.exports = {
     Generic,
-    UnknownAction,
+    UnknownCommand,
+    UnknownQuery,
     BusinessRule,
 }
