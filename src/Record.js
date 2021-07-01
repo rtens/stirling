@@ -5,4 +5,11 @@ module.exports = class Record {
         this.revision = revision
         this.facts = facts
     }
+
+    flatten() {
+        return {
+            ...this,
+            facts: this.facts.map(f => ({ ...f }))
+        }
+    }
 }

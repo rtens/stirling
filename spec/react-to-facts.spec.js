@@ -1,6 +1,6 @@
 const test = require('ava');
 const mock = require('./mock')
-const { Command, Fact, Aggregate, Reaction } = require('..')
+const { Command, Fact, Reaction } = require('..')
 
 test('React to fact', t => {
     // CONDITION

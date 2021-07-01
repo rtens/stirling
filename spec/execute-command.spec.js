@@ -40,6 +40,44 @@ test('Reject unknown command', t => {
         })
 })
 
+test('Execute command', t => {
+    // CONDITION
+    let executed
+    const c = mock.context()
+    c.registry
+        .addAggregate(class {
+            static canExecute() {
+                return true
+            }
+            static identify() {
+                return 'foo'
+            }
+            execute(command) {
+                executed = { ...command }
+            }
+        })
+
+    // ACTION
+    return c.service.execute(new Command('Foo')
+        .withArguments('bar')
+        .withTrace('here'))
+
+        // EXPECTATION
+        .then(() => {
+            t.deepEqual(executed, {
+                name: 'Foo',
+                arguments: 'bar',
+                trace: 'here'
+            })
+            t.deepEqual(c.journal.recorded, [])
+            t.deepEqual(c.log.infos.slice(1), [{
+                trace: 'here',
+                message: 'Executed',
+                attributes: undefined
+            }])
+        })
+})
+
 test('Record facts', t => {
     // CONDITION
     const c = mock.context()
@@ -51,9 +89,9 @@ test('Record facts', t => {
             static identify(command) {
                 return command.arguments
             }
-            execute(command) {
+            execute() {
                 return [
-                    new Fact(command.name + 'd', command.arguments),
+                    new Fact('Food', 'one'),
                     new Fact('Bard', 'two')
                 ]
             }
@@ -72,17 +110,27 @@ test('Record facts', t => {
                 revision: 0,
                 facts: [{
                     name: 'Food',
-                    attributes: 'bar'
+                    attributes: 'one'
                 }, {
                     name: 'Bard',
                     attributes: 'two'
                 }]
             }])
-
             t.deepEqual(c.log.infos.slice(1), [{
                 trace: 'here',
                 message: 'Executed',
-                attributes: undefined
+                attributes: {
+                    trace: 'here',
+                    aggregateId: 'bar',
+                    revision: 0,
+                    facts: [{
+                        name: 'Food', 
+                        attributes: 'one'
+                    }, {
+                        name: 'Bard',
+                        attributes: 'two'
+                    }]
+                }
             }])
         })
 })
@@ -240,32 +288,6 @@ test('Reject failing execution', t => {
             error: 'Boom!'
         }]))
 });
-
-[
-    ['nothing', null],
-    ['an empty list', []],
-    ['no facts', [new Fact(), 'no fact']]
-].forEach(([description, returnValue]) =>
-    test('Reject execution returning ' + description, t => {
-        // CONDITION
-        const c = mock.context()
-        c.registry
-            .addAggregate(class {
-                static canExecute() { return true }
-                static identify() { return 'foo' }
-                execute() { return returnValue }
-            })
-
-        // ACTION
-        return c.service.execute(new Command('Foo'))
-
-            // EXPECTATION
-            .then(() => t.fail('Should have rejected'))
-            .catch(e => {
-                t.is(e.message, 'Execution did not return a list of facts')
-                t.is(c.log.errors[0].error, e)
-            })
-    }))
 
 test('Reject unidentified command', t => {
     // CONDITION
