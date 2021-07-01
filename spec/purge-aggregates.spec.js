@@ -2,7 +2,7 @@ const test = require('ava');
 const { Aggregate, Fact, Command } = require('..')
 const mock = require('./mock')
 
-test('Purge aggregate using PURGED fact', t => {
+test('Erase aggregate using ERASED fact', t => {
     // CONTEXT
     const c = mock.context()
     let reacted
@@ -10,7 +10,7 @@ test('Purge aggregate using PURGED fact', t => {
         .addAggregate(class {
             static canExecute() { return true }
             static identify() { return 'foo' }
-            execute() { return [Fact.PURGED('gone')] }
+            execute() { return [Fact.ERASED('gone')] }
         })
         .addReaction(class {
             reactTo(record) {
@@ -29,19 +29,19 @@ test('Purge aggregate using PURGED fact', t => {
                 aggregateId: 'foo',
                 revision: 0,
                 facts: [{
-                    name: 'PURGED',
+                    name: 'ERASED',
                     attributes: 'gone'
                 }]
             }, {
-                purged: 'foo'
+                erased: 'foo'
             }])
             t.deepEqual(reacted, {
-                name: 'PURGED',
+                name: 'ERASED',
                 attributes: 'gone'
             })
             t.deepEqual(c.log.infos.slice(2), [{
                 trace: 'here',
-                message: 'Purging',
+                message: 'Erasing',
                 attributes: {
                     aggregateId: 'foo',
                 },

@@ -13,8 +13,8 @@ class Journal {
         return Promise.all(this.followers.map(f => f(record)))
     }
 
-    purge(aggregateId) {
-        this.recorded.push({ purged: aggregateId })
+    erase(aggregateId) {
+        this.recorded.push({ erased: aggregateId })
         return Promise.resolve()
     }
 

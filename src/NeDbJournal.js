@@ -36,7 +36,7 @@ module.exports = class NeDbJournal {
         return find.call(this, {}, iterator)
     }
 
-    purge(aggregateId) {
+    erase(aggregateId) {
         return new Promise((y, n) =>
             this.db.remove(
                 { aggregateId },

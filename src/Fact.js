@@ -4,7 +4,7 @@ module.exports = class Fact {
         this.attributes = attributes
     }
 
-    static PURGED(attributes = null) {
-        return new Fact('PURGED', attributes)
+    static ERASED(attributes = null) {
+        return new Fact('ERASED', attributes)
     }
 }

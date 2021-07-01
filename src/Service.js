@@ -33,9 +33,9 @@ module.exports = class Service {
     }
 
     reactTo(record) {
-        if (record.facts.some(e => e.name == 'PURGED')) {
-            this.log.info(record.trace, 'Purging', { aggregateId: record.aggregateId })
-            this.journal.purge(record.aggregateId)
+        if (record.facts.some(e => e.name == 'ERASED')) {
+            this.log.info(record.trace, 'Erasing', { aggregateId: record.aggregateId })
+            this.journal.erase(record.aggregateId)
         }
 
         this.registry.allReactions()

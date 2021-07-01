@@ -113,7 +113,7 @@ Object.keys(journals).forEach(name => {
             .catch(err => t.not(err, null))
     })
 
-    test('Purge records of an aggregate with ' + name, t => {
+    test('Erase records of an aggregate with ' + name, t => {
         // CONDITION
         const journal = makeJournal()
         return Promise
@@ -133,7 +133,7 @@ Object.keys(journals).forEach(name => {
 
             // ACTION
             .then(() =>
-                journal.purge('foo'))
+                journal.erase('foo'))
 
             //EXPECTATION
             .then(() => {
